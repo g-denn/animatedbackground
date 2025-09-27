@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Animated Radiant Background Demo</title>
+    <style>
+      /*
+        GENERAL NOTES FOR BEGINNERS -------------------------------------------------
+        - CSS variables (the names starting with --) make it easy to reuse values.
+        - We use fixed-position layers so the animation fills the entire viewport.
+        - Animations are created by smoothly transforming gradient layers.
+        - Every section below contains comments explaining why each rule exists.
+      */
+
+      :root {
+        /* Base colors that feel close to the "Apple aesthetic" */
+        --color-background: #050814;
+        --color-accent-1: rgba(99, 102, 241, 0.65);
+        --color-accent-2: rgba(56, 189, 248, 0.6);
+        --color-accent-3: rgba(167, 139, 250, 0.55);
+        /* The blur level used to soften the gradients */
+        --layer-blur: 120px;
+      }
+
+      /*
+        The body simply holds the background layers and some demo content.
+        - overflow: hidden prevents scrollbars when the animated layers scale.
+      */
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: var(--color-background);
+        color: #f8fafc;
+        font-family: "SF Pro Display", "SF Pro Text", -apple-system, BlinkMacSystemFont,
+          "Segoe UI", sans-serif;
+        overflow: hidden;
+        line-height: 1.5;
+      }
+
+      /* A container for the animated layers. Fixed so it always covers the screen. */
+      .radiant-background {
+        position: fixed;
+        inset: 0; /* shorthand for top/right/bottom/left: 0 */
+        overflow: hidden;
+        z-index: -1; /* keeps the animation behind the page content */
+        background: var(--color-background);
+        will-change: transform;
+        transform: translate3d(var(--pointer-x, 0px), var(--pointer-y, 0px), 0);
+      }
+
+      /*
+        Each .radiant-layer is a blurred circular gradient that we animate.
+        - We rely on transforms (translate/scale/rotate) because they are GPU accelerated.
+        - will-change hints the browser to optimize for these animations.
+      */
+      .radiant-layer {
+        position: absolute;
+        width: 60vw;
+        height: 60vw;
+        min-width: 480px; /* ensures the circles stay visible on smaller screens */
+        min-height: 480px;
+        border-radius: 50%;
+        filter: blur(var(--layer-blur));
+        opacity: 0.85;
+        will-change: transform, opacity;
+        transform-origin: center;
+        mix-blend-mode: screen; /* makes the colors glow when they overlap */
+        transition: filter 300ms ease;
+      }
+
+      /*
+        Individual layers with different gradients and animation timings. The custom
+        properties for animation duration help us keep the keyframes reusable.
+      */
+      .radiant-layer.layer-1 {
+        background: radial-gradient(circle at 30% 30%, var(--color-accent-1), transparent 70%);
+        animation: float 22s linear infinite;
+      }
+
+      .radiant-layer.layer-2 {
+        background: radial-gradient(circle at 70% 40%, var(--color-accent-2), transparent 65%);
+        animation: float 32s linear infinite reverse;
+      }
+
+      .radiant-layer.layer-3 {
+        background: radial-gradient(circle at 50% 70%, var(--color-accent-3), transparent 60%);
+        animation: float 28s linear infinite;
+      }
+
+      /*
+        The shared keyframes gently rotate and move the gradients. Because we only change
+        transform (translate/scale/rotate), the animation stays performant.
+      */
+      @keyframes float {
+        0% {
+          transform: translate3d(-10%, -10%, 0) scale(1) rotate(0deg);
+        }
+        25% {
+          transform: translate3d(8%, -5%, 0) scale(1.1) rotate(60deg);
+        }
+        50% {
+          transform: translate3d(5%, 10%, 0) scale(1.05) rotate(120deg);
+        }
+        75% {
+          transform: translate3d(-12%, 5%, 0) scale(1.15) rotate(180deg);
+        }
+        100% {
+          transform: translate3d(-10%, -10%, 0) scale(1) rotate(360deg);
+        }
+      }
+
+      /*
+        Basic layout styling for the visible content. This is optional and only here to
+        showcase the background. Flexbox centers the content vertically and horizontally.
+      */
+      main {
+        position: relative;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        gap: 1.5rem;
+        padding: 2rem;
+        text-align: center;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(2.5rem, 5vw, 4rem);
+        letter-spacing: 0.04em;
+      }
+
+      p {
+        max-width: 48rem;
+        font-size: clamp(1rem, 2.4vw, 1.25rem);
+        color: rgba(226, 232, 240, 0.92);
+      }
+
+      a.cta-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.875rem 1.75rem;
+        border-radius: 999px;
+        font-weight: 600;
+        font-size: 1rem;
+        color: #0f172a;
+        background: linear-gradient(135deg, #e0f2fe, #c7d2fe);
+        text-decoration: none;
+        box-shadow: 0 20px 45px rgba(148, 163, 184, 0.2);
+        transition: transform 200ms ease, box-shadow 200ms ease;
+      }
+
+      a.cta-button:hover,
+      a.cta-button:focus-visible {
+        transform: translateY(-2px);
+        box-shadow: 0 24px 55px rgba(148, 163, 184, 0.35);
+      }
+
+      a.cta-button:focus-visible {
+        outline: 2px solid rgba(148, 163, 184, 0.6);
+        outline-offset: 4px;
+      }
+
+      /*
+        High refresh rate displays can show stutter if animations are too fast.
+        The durations chosen above (22s-32s) are intentionally long so the motion stays
+        calm. This also reduces the amount of CPU/GPU work required per frame.
+      */
+
+      /*
+        Fallback for browsers that do not support mix-blend-mode or backdrop filters.
+        We adjust the opacity and remove blend mode to ensure the gradients remain visible.
+      */
+      @supports not (mix-blend-mode: screen) {
+        .radiant-layer {
+          mix-blend-mode: normal;
+          opacity: 0.7;
+        }
+      }
+
+      /*
+        Respect users who prefer reduced motion. We keep a static gradient background but
+        still show a subtle design.
+      */
+      @media (prefers-reduced-motion: reduce) {
+        .radiant-layer {
+          animation: none !important;
+          transform: translate3d(0, 0, 0) scale(1);
+        }
+      }
+
+      /*
+        When the window shrinks, reduce the blur slightly so the gradients stay sharp.
+      */
+      @media (max-width: 600px) {
+        :root {
+          --layer-blur: 90px;
+        }
+        .radiant-layer {
+          width: 85vw;
+          height: 85vw;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!--
+      The fixed background container holds all glowing layers. It is placed before the
+      main content so it stays behind everything else.
+    -->
+    <div class="radiant-background">
+      <!-- Each layer is positioned differently using inline styles. -->
+      <div
+        class="radiant-layer layer-1"
+        style="top: -20%; left: -15%;"
+        aria-hidden="true"
+      ></div>
+      <div
+        class="radiant-layer layer-2"
+        style="bottom: -30%; right: -10%;"
+        aria-hidden="true"
+      ></div>
+      <div
+        class="radiant-layer layer-3"
+        style="top: 10%; right: 25%;"
+        aria-hidden="true"
+      ></div>
+    </div>
+
+    <main>
+      <h1>Radiant Background Demo</h1>
+      <p>
+        This example shows how to create a smooth, GPU-friendly radiant gradient background
+        using only HTML and CSS. Resize the window or move your pointer to see the subtle
+        parallax effect. The animation automatically slows down for devices that prefer
+        reduced motion.
+      </p>
+      <a class="cta-button" href="#" role="button">Explore the Source Code</a>
+    </main>
+
+    <script>
+      /*
+        OPTIONAL INTERACTIVITY -----------------------------------------------------
+        The script below adds a gentle parallax effect that reacts to pointer movement.
+        - requestAnimationFrame ensures the updates sync with the browser's paint cycle.
+        - We clamp the movement so it stays subtle and doesn't cause motion sickness.
+        - The effect is skipped entirely when the user prefers reduced motion.
+      */
+
+      (function () {
+        const prefersReducedMotion = window.matchMedia(
+          '(prefers-reduced-motion: reduce)'
+        ).matches;
+        if (prefersReducedMotion) return; // Exit early to respect user preference.
+
+        const background = document.querySelector('.radiant-background');
+        const maxOffset = 28; // Maximum translation in pixels for the parallax effect.
+        let pointerX = 0;
+        let pointerY = 0;
+        let currentX = 0;
+        let currentY = 0;
+
+        // Update the stored pointer position whenever the user moves the mouse or touches.
+        const updatePointer = (event) => {
+          const { innerWidth, innerHeight } = window;
+          const clientX = event.touches ? event.touches[0].clientX : event.clientX;
+          const clientY = event.touches ? event.touches[0].clientY : event.clientY;
+
+          // Convert to a range between -1 and 1 (centered around the middle of the screen).
+          pointerX = (clientX / innerWidth - 0.5) * 2;
+          pointerY = (clientY / innerHeight - 0.5) * 2;
+        };
+
+        window.addEventListener('pointermove', updatePointer, { passive: true });
+        window.addEventListener('touchmove', updatePointer, { passive: true });
+
+        function animate() {
+          // Smoothly approach the target pointer position to avoid sharp jumps.
+          currentX += (pointerX - currentX) * 0.08;
+          currentY += (pointerY - currentY) * 0.08;
+
+          const offsetX = currentX * maxOffset;
+          const offsetY = currentY * maxOffset;
+
+          background?.style.setProperty('--pointer-x', `${offsetX}px`);
+          background?.style.setProperty('--pointer-y', `${offsetY}px`);
+
+          requestAnimationFrame(animate);
+        }
+
+        animate();
+      })();
+    </script>
+  </body>
+</html>
